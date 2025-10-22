@@ -10,7 +10,7 @@ const system = `Eres un asistente de orientaci√≥n en salud para pacientes no cl√
 export async function POST(req: Request){
   const { messages }: { messages: UIMessage[] } = await req.json()
   const result = streamText({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any, // cast para evitar conflicto V1/V2
     messages: [ { role: 'system', content: system }, ...convertToModelMessages(messages) ]
   })
   return result.toAIStreamResponse()
