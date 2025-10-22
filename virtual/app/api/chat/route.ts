@@ -1,9 +1,10 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { streamText, generateText, UIMessage, convertToModelMessages } from 'ai'
 
-export const runtime = 'edge'
+// Cambiamos a runtime Node.js para evitar restricciones de Edge
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 30
+export const maxDuration = 60
 
 function jsonError(message: string, status = 500) {
   return new Response(JSON.stringify({ error: message }), {
@@ -20,16 +21,15 @@ export async function POST(req: Request){
     const openai = createOpenAI({ apiKey })
     const url = new URL(req.url)
     const debug = url.searchParams.get('debug') === '1'
-    const modelId = process.env.OPENAI_MODEL || 'gpt-3.5-turbo' // más disponible
+    const modelId = process.env.OPENAI_MODEL || 'gpt-3.5-turbo'
 
     const { messages }: { messages: UIMessage[] } = await req.json()
 
     if (debug){
-      // Camino no-stream para ver errores completos
       const res = await generateText({
         model: openai(modelId) as any,
         messages: [{ role: 'system', content: 'Modo debug' }, ...convertToModelMessages(messages)],
-        prompt: undefined as any, // usamos messages, no prompt
+        prompt: undefined as any,
       })
       return new Response(JSON.stringify({ ok: true, text: res.text }), {
         status: 200,
@@ -37,7 +37,6 @@ export async function POST(req: Request){
       })
     }
 
-    // Camino normal con streaming
     const result = streamText({
       model: openai(modelId) as any,
       messages: [{ role: 'system', content: `Eres un asistente de orientación en salud para pacientes no clínicos en Chile.
@@ -48,6 +47,7 @@ export async function POST(req: Request){
     })
     return result.toAIStreamResponse()
   }catch(err: any){
+    console.error('CHAT ROUTE ERROR:', err)
     const msg = err?.message || String(err) || 'Internal error in /api/chat'
     return jsonError(msg, 500)
   }
